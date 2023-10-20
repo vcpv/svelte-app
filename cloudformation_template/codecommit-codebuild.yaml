@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: CloudFormation template to create an AWS CodeCommit repository.
+
+Parameters:
+  CodeBuildServiceRoleArn:
+    Type: String
+    Description: ARN of the IAM role for AWS CodeBuild service.
+
+Resources:
+  MyCodeCommitRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: MyCodeCommitRepository
+
+
+  MyCodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: MyCodeBuildProject
+      ServiceRole: !Ref CodeBuildServiceRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: "version: 0.2\n#magic___^_^___line\nphases:\n#magic___^_^___line\n  install:\n  #magic___^_^___line\n    commands:\n    #magic___^_^___line\n      - echo \"Install Phase - Nothing to do using latest Amazon Linux Docker Image for CodeBuild which has all AWS Tools - https://github.com/aws/aws-codebuild-docker-images/blob/master/al2/x86_64/standard/3.0/Dockerfile\"\n      #magic___^_^___line\n  pre_build:\n      #magic___^_^___line\n      commands:\n      #magic___^_^___line\n        # Docker Image Tag with Date Time & Code Buiild Resolved Source Version\n        #magic___^_^___line\n        - TAG=\"$(date +%Y-%m-%d.%H.%M.%S).$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | head -c 8)\"\n        #magic___^_^___line\n        # Update Image tag in our Kubernetes Deployment Manifest        \n        #magic___^_^___line\n        - echo \"Update Image tag in kube-manifest...\"\n        #magic___^_^___line\n        # - sed -i '756234729041.dkr.ecr.us-east-2.amazonaws.com/your-repo-name:latest''756234729041.dkr.ecr.us-east-2.amazonaws.com/your-repo-name:latest' deployment.yaml\n        - sed -i 's@134114849607.dkr.ecr.ap-south-1.amazonaws.com/your-repo-name:latest@134114849607.dkr.ecr.ap-south-1.amazonaws.com/your-repo-name:latest@g' deployment.yaml\n        #magic___^_^___line\n        #magic___^_^___line\n        # Verify AWS CLI Version        \n        #magic___^_^___line\n        - echo \"Verify AWS CLI Version...\"\n        #magic___^_^___line\n        - aws --version\n        #magic___^_^___line\n        # Update Kube config Home Directory\n        #magic___^_^___line\n        - export KUBECONFIG=$HOME/.kube/config\n        #magic___^_^___line\n  build:\n        #magic___^_^___line\n    commands:\n        #magic___^_^___line\n      # Build Docker Image\n        #magic___^_^___line\n      - echo \"Build started on `date`\"\n        #magic___^_^___line\n  post_build:\n        #magic___^_^___line\n    commands:\n        #magic___^_^___line\n      # Setup kubectl with our EKS Cluster\n        #magic___^_^___line\n        #magic___^_^___line\n      - echo \"Update Kube Config\"      \n        #magic___^_^___line\n      - aws eks update-kubeconfig --name my-eks-cluster-2\n        #magic___^_^___line\n      # Apply changes to our Application using kubectl\n        #magic___^_^___line\n      - echo \"Apply changes to kube manifests\"            \n      - export AWS_ACCESS_KEY_ID=\n      - export AWS_SECRET_ACCESS_KEY=\n      - aws eks update-kubeconfig --name my-eks-cluster-2 --region us-east-2\n      - kubectl config get-contexts\n      - kubectl get nodes\n      - kubectl get pods\n      - kubectl apply -f deployment.yaml\n      - kubectl apply -f service-ingress.yaml\n        #magic___^_^___line\n      - echo \"Completed applying changes to Kubernetes Objects\"  \n        #magic___^_^___line\n"
