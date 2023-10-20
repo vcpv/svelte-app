@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Amazon EKS Cluster'
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: my-eks-cluster
+  KubernetesVersion:
+    Type: String
+    Default: 1.25
+
+Resources:
+  ###########################################
+  ## Roles
+  ###########################################
+  EksRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: my.eks.cluster.role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - eks.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  ###########################################
+  ## Eks Cluster
+  ###########################################
+
+  EksCluster:
+    Type: AWS::EKS::Cluster
+    DependsOn: EksRole
+    Properties:
+      Name: !Ref ClusterName
+      Version: !Ref KubernetesVersion
+      RoleArn: !GetAtt EksRole.Arn # Verify this ARN
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+        - !ImportValue ControlPlaneSecurityGroupId
+        SubnetIds: !Split [',', !ImportValue PublicSubnetIds]
+
+  ###########################################
+  ## Fargate Profile
+  ###########################################
+
+  FargateProfile:
+    Type: AWS::EKS::FargateProfile
+    DependsOn: EksCluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      FargateProfileName: my-fargate-profile
+      Subnets: ["subnet-0d9574268143a6f6c", "subnet-0f040408f9758839a"]
+      PodExecutionRoleArn: arn:aws:iam::134114849607:role/AmazonEKSFargatePodExecutionRole # Verify this ARN
+      Selectors:
+      - Namespace: default
