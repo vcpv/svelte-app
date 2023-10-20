@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: CloudFormation template to create an AWS CodePipeline with an S3 artifact store.
+
+Parameters:
+  CodePipelineServiceRoleArn:
+    Type: String
+    Description: ARN of the IAM role for AWS CodePipeline service.
+
+Resources:
+  MyArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: my-codepipeline-artifacts-bucket-23243sd
+
+  MyCodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: MyCodePipeline
+      RoleArn: !Ref CodePipelineServiceRoleArn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref MyArtifactBucket
+      Stages:
+      - Name: Source
+        Actions:
+        - Name: SourceAction
+          ActionTypeId:
+            Category: Source
+            Owner: AWS
+            Provider: CodeCommit
+            Version: 1
+          OutputArtifacts:
+          - Name: SourceArtifact
+          Configuration:
+            RepositoryName: MyCodeCommitRepository
+            BranchName: main
+
+      - Name: Build
+        Actions:
+        - Name: BuildAction
+          ActionTypeId:
+            Category: Build
+            Owner: AWS
+            Provider: CodeBuild
+            Version: 1
+          InputArtifacts:
+          - Name: SourceArtifact
+          OutputArtifacts:
+          - Name: BuildArtifact
+          Configuration:
+            ProjectName: MyCodeBuildProject
